@@ -1,44 +1,56 @@
 require 'rubygems'
 require 'rake/gempackagetask'
+require 'spec'
+require 'spec/rake/spectask'
+require 'pathname'
 
-PLUGIN = "merb-fasten-the-seat-belt"
-NAME = "merb-fasten-the-seat-belt"
-VERSION = "0.0.1"
-AUTHOR = "Your Name"
-EMAIL = "Your Email"
-HOMEPAGE = "http://merb-plugins.rubyforge.org/merb-fasten-the-seat-belt/"
-SUMMARY = "Merb plugin that provides ..."
+ROOT = Pathname(__FILE__).dirname.expand_path
+PLUGIN = "dm-fasten-the-seat-belt"
+NAME = "dm-fasten-the-seat-belt"
+AUTHOR = "Maxime Guilbot"
+EMAIL = "maxime [a] ekohe [d] com"
+HOMEPAGE = "http://github.com/maxime/dm-fasten-the-seat-belt"
+SUMMARY = PROJECT_DESCRIPTION = PROJECT_SUMMARY = "A new merb plugin for adding image and file upload storage capabilities"
+GEM_VERSION = DataMapper::Is::Taggable::VERSION
+GEM_DEPENDENCIES = [["dm-core", GEM_VERSION], ["mini_magick", ">=1.2.3"]]
+GEM_CLEAN = ["log", "pkg"]
+GEM_EXTRAS = { :has_rdoc => true, :extra_rdoc_files => %w[ README.txt LICENSE TODO ] }
 
-spec = Gem::Specification.new do |s|
-  s.name = NAME
-  s.version = VERSION
-  s.platform = Gem::Platform::RUBY
-  s.has_rdoc = true
-  s.extra_rdoc_files = ["README", "LICENSE", 'TODO']
-  s.summary = SUMMARY
-  s.description = s.summary
-  s.author = AUTHOR
-  s.email = EMAIL
-  s.homepage = HOMEPAGE
-  #s.add_dependency('merb', '>= 0.4.0')
-  s.require_path = 'lib'
-  s.autorequire = PLUGIN
-  s.files = %w(LICENSE README Rakefile TODO) + Dir.glob("{lib,specs}/**/*")
+GEM_NAME = "dm-fasten-the-seat-belt"
+
+require 'tasks/hoe'
+
+WIN32 = (RUBY_PLATFORM =~ /win32|mingw|cygwin/) rescue nil
+SUDO  = WIN32 ? '' : ('sudo' unless ENV['SUDOLESS'])
+
+desc "Install #{GEM_NAME} #{GEM_VERSION}"
+task :install => [ :package ] do
+  sh "#{SUDO} gem install --local pkg/#{GEM_NAME}-#{GEM_VERSION} --no-update-sources", :verbose => false
 end
 
-Rake::GemPackageTask.new(spec) do |pkg|
-  pkg.gem_spec = spec
+desc "Uninstall #{GEM_NAME} #{GEM_VERSION} (default ruby)"
+task :uninstall => [ :clobber ] do
+  sh "#{SUDO} gem uninstall #{GEM_NAME} -v#{GEM_VERSION} -I -x", :verbose => false
 end
 
-task :install => [:package] do
-  sh %{sudo gem install pkg/#{NAME}-#{VERSION}}
+desc 'Run specifications'
+Spec::Rake::SpecTask.new(:spec) do |t|
+  t.spec_opts << '--options' << 'spec/spec.opts' if File.exists?('spec/spec.opts')
+  t.spec_files = Pathname.glob((ROOT + 'spec/*_spec.rb').to_s)
+    # 
+    # begin
+    #   t.rcov = ENV.has_key?('NO_RCOV') ? ENV['NO_RCOV'] != 'true' : true
+    #   t.rcov_opts << "--exclude 'config,spec,#{Gem::path.join(',')}'"
+    #   t.rcov_opts << '--text-summary'
+    #   t.rcov_opts << '--sort' << 'coverage' << '--sort-reverse'
+    # rescue Exception
+    #   # rcov not installed
+    # end
 end
 
 namespace :jruby do
-
   desc "Run :package and install the resulting .gem with jruby"
   task :install => :package do
     sh %{#{SUDO} jruby -S gem install pkg/#{NAME}-#{Merb::VERSION}.gem --no-rdoc --no-ri}
   end
-  
 end
