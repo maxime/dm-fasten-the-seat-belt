@@ -1,10 +1,20 @@
+require 'rubygems'
+require 'pathname'
+
 require 'mini_magick'
+
+gem 'dm-core', '~>0.9.8'
+require 'dm-core'
+
+require File.join(File.dirname(__FILE__), 'dm-fasten-the-seat-belt', 'fasten-the-seat-belt','compression')
 
 module DataMapper
   module FastenTheSeatBelt
     def self.included(base)
       base.send(:extend, ClassMethods)
+      
       base.send(:include, InstanceMethods)
+      base.send(:include, Compression)      
       base.send(:include, MiniMagick)
       base.class_eval do
         attr_accessor :file
@@ -28,7 +38,11 @@ module DataMapper
         after :destroy, :delete_directory
       
         # Options
-        options[:path_prefix] ||= 'public'
+        if !defined?(Merb) && !options[:file_system_path]
+          raise "If you're running dm-fasten-the-seat-belt outside of Merb, you must specifiy :file_system_path in the options"
+        end
+        
+        options[:file_system_path] ||= File.join((defined?(Merb) ? Merb.root : ''), 'public', merb_environment, self.storage_name)
         options[:thumbnails] ||= {}
 
         @@fasten_the_seat_belt = options
@@ -42,6 +56,10 @@ module DataMapper
         all.each {|object| object.generate_thumbnails! }
         true
       end
+      
+      def merb_environment
+        (defined?(Merb) ? Merb.env : '')
+      end
     end
   
     module InstanceMethods
@@ -49,18 +67,22 @@ module DataMapper
       # Get file path
       #
       def path(thumb=nil)
-        return nil unless self.filename
+        File.join(web_directory_name, filename_for_thumbnail(thumb))
+      end  
+            
+      def absolute_path(thumb=nil)
+        File.join(complete_directory_name, filename_for_thumbnail(thumb))
+      end
       
+      def filename_for_thumbnail(thumb=nil)
         if thumb != nil
           basename = self.filename.gsub(/\.(.*)$/, '')
           extension = self.filename.gsub(/^(.*)\./, '')
-          filename = basename + '_' + thumb.to_s + '.' + extension
+          return basename + '_' + thumb.to_s + '.' + extension
         else
-          filename = self.filename
+          return self.filename
         end
-
-        complete_web_directory + "/" + filename
-      end  
+      end
             
       def save_attributes
         return unless @file
@@ -84,27 +106,31 @@ module DataMapper
       
         @file = nil
       
+        # By default, images are supposed to be compressed
         self.images_are_compressed ||= true 
       end
     
       def directory_name
         # you can thank Jamis Buck for this: http://www.37signals.com/svn/archives2/id_partitioning.php
         dir = ("%08d" % self.id).scan(/..../)
-        "#{dir[0]}/#{dir[1]}"
+        File.join(dir[0], dir[1])
       end
     
-      def complete_web_directory
-        dir = '/' + self.class.fasten_the_seat_belt_options[:path_prefix]+"/#{Merb.env.intern}/#{self.class.storage_name}/#{directory_name}"
-        dir.gsub!(/^\/public/, '')
-        dir
+      def web_directory_name
+        raise "Can't return web directory name if not running in Merb" unless defined?(Merb)
+        unless complete_directory_name.include?(Merb.root)
+          raise "Can't return web directory name, the images aren't stored under the Merb application public directory" 
+        end
+        
+        complete_directory_name.gsub(/^#{Merb.root}\/public/, '')
       end
     
       def complete_directory_name
-        Merb.root + '/public' + complete_web_directory
+        File.join(self.class.fasten_the_seat_belt_options[:file_system_path], directory_name)
       end
   
       def complete_file_path
-        complete_directory_name + "/" + (self.filename || "")
+        File.join(complete_directory_name, (self.filename || ""))
       end
 
       def create_directory
@@ -130,13 +156,13 @@ module DataMapper
             # ow and oh are origin width and origin height
             ow = image[:width]
             oh = image[:height]
-          
+            
             # iw and ih and the dimensions of the cropped picture before resizing
             # there are 2 cases, iw = ow or ih = oh
             # using iw / ih = tw / th, we can determine the other values
             # we use the minimal values to determine the good case
-            iw = [ow, ((oh.to_f*tw.to_f) / th.to_f)].min.to_i
-            ih = [oh, ((ow.to_f*th.to_f) / tw.to_f)].min.to_i
+            iw = [ow, ((oh.to_f*tw.to_f) / th.to_f)].min
+            ih = [oh, ((ow.to_f*th.to_f) / tw.to_f)].min
           
             # we calculate how much image we must crop
             shave_width = ((ow.to_f - iw.to_f) / 2.0).to_i
@@ -145,9 +171,9 @@ module DataMapper
   
             # specify the width of the region to be removed from both sides of the image and the height of the regions to be removed from top and bottom.
             image.shave "#{shave_width}x#{shave_height}"
-          
+
             # resize of the pic
-            image.resize resize_to
+            image.resize resize_to.to_s + "!"
           else
             # no cropping
             image.resize resize_to
@@ -155,61 +181,18 @@ module DataMapper
           basename = self.filename.gsub(/\.(.*)$/, '')
           extension = self.filename.gsub(/^(.*)\./, '')
 
-          thumb_filename = complete_directory_name + "/" +  basename + '_' + key.to_s + '.' + extension
+          thumb_filename = File.join(complete_directory_name, (basename + '_' + key.to_s + '.' + extension))
 
           # Delete thumbnail if exists
           File.delete(thumb_filename) if File.exists?(thumb_filename)
           image.write thumb_filename
-        
-          next if ((self.images_are_compressed == false) || (Merb.env=="test"))
-        
-          if quality and !["image/jpeg", "image/jpg", "image/pjpeg"].include?(self.content_type) 
-            puts "FastenTheSeatBelt says: Quality setting not supported for #{self.content_type} files"
-            next
-          end
-        
-          if quality and quality < 100
+
+          next if self.images_are_compressed == false
+          
+          if quality and quality!=0 and quality < 100
             compress_jpeg(thumb_filename, quality)
           end
         end
-      end
-    
-      def verify_content_type
-        true || self.class.fasten_the_seat_belt_options[:content_types].include?(self.content_type)
-      end
-    
-      def dont_compress_now!
-        @dont_compress_now = true
-      end
-    
-      def compress_jpeg(filename, quality)
-        # puts "FastenTheSeatBelt says: Compressing #{filename} to quality #{quality}"
-        system("jpegoptim \"#{filename}\" -m#{quality} --strip-all")
-      end
-    
-      def compress_now!
-        return false if self.images_are_compressed
-      
-        self.class.fasten_the_seat_belt_options[:thumbnails].each_pair do |key, value|
-          resize_to = value[:size]
-          quality = value[:quality].to_i
-      
-          if quality and !["image/jpeg", "image/jpg"].include?(self.content_type) 
-            puts "FastenTheSeatBelt says: Quality setting not supported for #{self.content_type} files"
-            next
-          end
-        
-          basename = self.filename.gsub(/\.(.*)$/, '')
-          extension = self.filename.gsub(/^(.*)\./, '')
-          thumb_filename = complete_directory_name + "/" +  basename + '_' + key.to_s + '.' + extension
-        
-          if quality and quality < 100
-            compress_jpeg(thumb_filename, quality)
-          end
-        end
-      
-        self.images_are_compressed = true
-        self.save
       end
     end
   end # FastenTheSeatBelt
