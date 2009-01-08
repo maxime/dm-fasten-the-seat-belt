@@ -47,7 +47,7 @@ describe DataMapper::FastenTheSeatBelt, "outside of Merb" do
     small_thumbnail[:height].should == 232
   end
     
-  it "should be able to recreate the thumbnails" do
+  it "should be able to recreate the thumbnails of the pictures" do
     File.delete(@large_thumbnail_file_path)
     File.delete(@small_thumbnail_file_path)
     
@@ -78,17 +78,21 @@ describe DataMapper::FastenTheSeatBelt, "outside of Merb" do
     
     new_picture.reload
     
+    # Image shouldn't be compressed yet
     new_picture.images_are_compressed.should == false
     
     size_before_compression = File.size(new_picture.absolute_path(:large))
     
+    # Compress now
     new_picture.compress_now!
     new_picture.reload
     
     size_after_compression = File.size(new_picture.absolute_path(:large))
     
+    # Compressed image should be smaller in size
     size_before_compression.should > size_after_compression
     
+    # Image should be marked as compressed
     new_picture.images_are_compressed.should == true    
   end
   
@@ -173,7 +177,7 @@ describe DataMapper::FastenTheSeatBelt, "inside Merb" do
       fasten_the_seat_belt :thumbnails => {:small => {:size => "320x240", :quality => 99}}, :file_system_path => '/'
     end
     
-    lambda { @sunshine_image.path }.should raise_error "Can't return web directory name, the images aren't stored under the Merb application public directory"
+    lambda { @sunshine_image.path }.should raise_error("Can't return web directory name, the images aren't stored under the Merb application public directory")
   end
   
   it "should output 'Quality not supported' if we try to apply a quality setting on a non-jpeg image" do

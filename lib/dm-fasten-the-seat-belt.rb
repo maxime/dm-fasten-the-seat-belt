@@ -12,16 +12,20 @@ module DataMapper
   module FastenTheSeatBelt
     def self.included(base)
       base.send(:extend, ClassMethods)
-      
       base.send(:include, InstanceMethods)
       base.send(:include, Compression)      
       base.send(:include, MiniMagick)
       base.class_eval do
         attr_accessor :file
+    
+        class << self; attr_accessor :fasten_the_seat_belt_options end
+        
+        @fasten_the_seat_belt_options
       end
     end
   
     module ClassMethods
+
       def fasten_the_seat_belt(options={})
         # Properties
         self.property :filename, String
@@ -44,12 +48,8 @@ module DataMapper
         
         options[:file_system_path] ||= File.join((defined?(Merb) ? Merb.root : ''), 'public', merb_environment, self.storage_name)
         options[:thumbnails] ||= {}
-
-        @@fasten_the_seat_belt = options
-      end
     
-      def fasten_the_seat_belt_options
-        @@fasten_the_seat_belt
+        self.fasten_the_seat_belt_options = options
       end
     
       def recreate_thumbnails!
