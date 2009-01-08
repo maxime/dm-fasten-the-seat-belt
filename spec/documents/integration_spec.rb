@@ -24,6 +24,20 @@ describe DataMapper::FastenTheSeatBelt, "outside of Merb" do
     @pdf.save.should == true
   end
   
+  it "should be able to attach a word document" do
+    @doc_original_file_path = File.dirname(__FILE__) + '/files/word.doc'
+    @doc_tempfile = Tempfile.new('word.doc')
+    FileUtils.copy(@doc_original_file_path, @doc_tempfile.path)
+    
+    @doc = Document.new(:file => {:filename => 'word.doc',
+                                  :content_type => 'application/msword',
+                                  :tempfile => @doc_tempfile})
+    
+    @doc.should be_valid
+    @doc.save.should == true
+    File.exists?(File.join(File.dirname(__FILE__), 'storage', 'documents', '0000', '0002', 'word.doc')).should == true
+  end
+  
   it "should be able to save the document file in the right place" do
     File.exists?(@main_file_path).should == true
   end

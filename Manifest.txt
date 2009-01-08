@@ -8,10 +8,15 @@ lib/dm-fasten-the-seat-belt.rb
 lib/dm-fasten-the-seat-belt/fasten-the-seat-belt/compression.rb
 lib/dm-fasten-the-seat-belt/fasten-the-seat-belt/version.rb
 spec/classes.rb
+spec/documents/classes.rb
+spec/documents/files/document.pdf
+spec/documents/files/word.doc
+spec/documents/integration_spec.rb
 spec/pictures/classes.rb
 spec/pictures/files/children.jpg
+spec/pictures/files/children.png
 spec/pictures/files/sunshine.jpg
-spec/pictures/integration.rb
+spec/pictures/integration_spec.rb
 spec/spec.opts
 spec/spec_helper.rb
 tasks/hoe.rb
