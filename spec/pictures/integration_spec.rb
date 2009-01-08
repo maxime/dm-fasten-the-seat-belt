@@ -174,7 +174,7 @@ describe DataMapper::FastenTheSeatBelt, "inside Merb" do
   
   it "should raise an error if we try to get a web path and if the pictures aren't in the public directory" do
     class Image
-      fasten_the_seat_belt :thumbnails => {:small => {:size => "320x240", :quality => 99}}, :file_system_path => '/'
+      fasten_the_seat_belt :thumbnails => {:small => {:size => "320x240", :quality => 99}}, :file_system_path => (File.dirname(__FILE__) + '/storage/images2')
     end
     
     lambda { @sunshine_image.path }.should raise_error("Can't return web directory name, the images aren't stored under the Merb application public directory")
