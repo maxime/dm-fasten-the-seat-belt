@@ -8,7 +8,7 @@ ROOT = Pathname(__FILE__).dirname.expand_path
 require ROOT + 'lib/dm-fasten-the-seat-belt/fasten-the-seat-belt/version'
 
 PLUGIN = "dm-fasten-the-seat-belt"
-PROJECT_NAME = NAME = "dm-fasten-the-seat-belt"
+PROJECT_NAME = NAME = "dm-fasten-the-s"
 AUTHOR = "Maxime Guilbot"
 EMAIL = "maxime [a] ekohe [d] com"
 HOMEPAGE = PROJECT_URL = "http://github.com/maxime/dm-fasten-the-seat-belt"
