@@ -3,7 +3,7 @@ require 'pathname'
 
 require 'mini_magick'
 
-gem 'dm-core', '~>0.9.8'
+gem 'dm-core', '~>0.9.11'
 require 'dm-core'
 
 require File.join(File.dirname(__FILE__), 'dm-fasten-the-seat-belt', 'fasten-the-seat-belt','compression')
