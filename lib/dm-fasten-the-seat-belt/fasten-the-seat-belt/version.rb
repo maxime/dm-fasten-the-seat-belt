@@ -1,5 +1,5 @@
 module DataMapper
   module FastenTheSeatBelt
-    VERSION = '0.9.11'
+    VERSION = '1.0.0'
   end
 end
